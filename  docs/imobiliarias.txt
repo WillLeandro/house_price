@@ -1,0 +1,146 @@
+
+IMOBILIARIAS MAPEADAS
+Projeto: Recomendador de Imoveis por Custo-Beneficio, Arapongas-PR
+
+Este documento registra as 12 imobiliarias identificadas em Arapongas
+durante o levantamento inicial, a plataforma tecnica de cada site e a
+estrategia usada (ou o motivo de nao ter sido usada) para extrair os
+dados de locacao.
+
+
+1. IMOBILIARIA RICARDO
+Site: imobiliariaricardo.com.br
+Status: extrator funcionando
+
+Plataforma Next.js, provedor Arbo Imoveis. O site embute todos os dados
+dos imoveis dentro de um bloco de JSON chamado __NEXT_DATA__, direto no
+HTML da pagina. Por isso o extrator le esse JSON ao inves de depender de
+selecionadores CSS, o que deixa a extracao mais estavel a mudancas visuais
+no site. A API interna retorna ate 3000 imoveis numa unica chamada, entao
+nao foi necessario implementar paginacao.
+
+
+2. IMOBILIARIA SOLARA
+Site: imobiliariasolara.com.br
+Status: extrator funcionando
+
+Plataforma Code49. HTML renderizado no servidor, com classes CSS estaveis
+(c49-property-card e variantes). A extracao usa BeautifulSoup lendo essas
+classes. A paginacao segue o padrao /imoveis/{codigo_busca}/{pagina}.
+
+
+3. IMOBILIARIA E LOTEADORA LINHAM
+Site: imobiliarialinham.com.br
+Status: extrator funcionando
+
+Plataforma Imonov, construida sobre Webflow. Estrutura de classes
+diferente da Code49 (div-block-11, feature-escrita etc). O site mostra
+tres valores de aluguel por anuncio (valor cheio, desconto de pontualidade
+e valor com desconto). O extrator usa o valor ja com desconto, que e o
+que o inquilino paga de fato pagando em dia.
+
+
+4. IMOVEIS PANORAMA
+Site: imoveispanorama.com.br
+Status: extrator funcionando, com limitacao conhecida
+
+Plataforma customizada (rodape indica Sistemas Cordon). A pagina de
+listagem nao mostra quartos, banheiros nem vagas, esses dados aparecem
+em branco no HTML e so existem na pagina de detalhe de cada imovel.
+Por isso esses campos ficam vazios no banco para esta imobiliaria.
+A extracao percorre os tipos disponiveis na secao de busca rapida por
+locacao (apartamento, casa, sobrado).
+
+
+5. IMOBILIARIA FRANJOVI
+Site: imobiliariafranjovi.com.br
+Status: extrator funcionando
+
+Plataforma Code49. Inicialmente o robots.txt pareceu bloquear qualquer
+acesso automatizado, mas ao reexaminar o arquivo, a regra geral era
+"Allow: /" para todos os agentes, e o bloqueio valia so para nomes
+especificos de bots conhecidos (ferramentas de SEO, crawlers de
+download em massa). Um scraper com User-Agent proprio e identificado
+nao cai nessas regras, entao o acesso automatizado e permitido.
+
+
+6. BNZ NEGOCIOS IMOBILIARIOS
+Site: bnznegociosimobiliarios.com.br
+Status: extrator funcionando
+
+Plataforma Code49, mesma situacao de robots.txt da Franjovi. Foi
+necessario adicionar um filtro extra: a URL de busca do site inclui
+"arapongas-pr" no caminho, mas o proprio site as vezes retorna imoveis
+de outras cidades mesmo assim. O extrator confere se "arapongas" aparece
+na URL de cada imovel individual antes de aceitar o registro.
+
+
+7. ALMEIDA SILVA IMOVEIS
+Site: almeidasilvaimoveis.com.br
+Status: extrator funcionando
+
+Plataforma Code49, mesma situacao de robots.txt. Essa imobiliaria atende
+mais de uma cidade da regiao (identificamos ao menos um imovel em
+Apucarana que vazou na busca filtrada por Arapongas), entao o mesmo
+filtro de URL contendo "arapongas" foi essencial aqui.
+
+
+8. IMOBILIARIA GIULIANO
+Site: imobiliariagiuliano.com.br
+Status: extrator funcionando
+
+Plataforma Code49, mesma situacao de robots.txt. Alguns anuncios nao
+tem o bairro preenchido no bloco de endereco do card, mas o titulo do
+anuncio geralmente repete essa informacao (por exemplo "Casa para
+Locacao no Jardim Cultura"). O extrator tenta extrair o bairro do
+titulo por expressao regular quando o bloco de endereco vem vazio.
+
+
+9. TERRA SANTA EMPREENDIMENTOS IMOBILIARIOS
+Site: terrasantaimoveis.com.br
+Status: extrator funcionando
+
+Plataforma Code49, mesma situacao de robots.txt das demais.
+
+
+10. IMOBILIARIA BERTONI
+Site: imobiliariabertoni.com.br
+Status: fora do escopo desta versao
+
+Tambem roda em Next.js (plataforma Msys, hospedada em bucket S3 proprio),
+mas diferente da Ricardo, os dados dos imoveis NAO vem no HTML inicial.
+O campo de imoveis no JSON __NEXT_DATA__ chega vazio, e a lista real e
+carregada por uma chamada de API depois que o JavaScript roda no
+navegador. Nao foi encontrado o endpoint dessa API. Para extrair dados
+desse site seria necessario um navegador automatizado (Selenium ou
+Playwright) esperando o JavaScript carregar antes de ler a pagina.
+
+
+11. IMOBILIARIA SHAMAR
+Site: imobiliariashamar.com.br
+Status: fora do escopo desta versao
+
+Plataforma Flexpro Sistemas / Simob Portal, construida em Angular como
+uma SPA (single page application). O HTML inicial vem completamente
+vazio, so com a tag app-root e os scripts do Angular. Todo o conteudo e
+montado via JavaScript no navegador. A Flexpro tem uma API mencionada
+em buscas, mas a documentacao publica encontrada nao correspondia a essa
+plataforma. Mesma solucao da Bertoni seria necessaria: navegador
+automatizado.
+
+
+12. IMOBILIARIA VALE VERDE
+Site: imobiliariavaleverde.com.br
+Status: fora do escopo desta versao
+
+Mesma plataforma e mesma limitacao da Shamar (Angular SPA, HTML inicial
+vazio).
+
+
+RESUMO
+9 de 12 imobiliarias com extrator automatizado funcionando (Ricardo,
+Solara, Linham, Panorama, Franjovi, BNZ, Almeida Silva, Giuliano, Terra
+Santa). 3 ficaram de fora por dependerem de renderizacao client side via
+JavaScript sem API publica localizada (Bertoni, Shamar, Vale Verde),
+o que exigiria automacao de navegador (Selenium/Playwright) para ser
+viabilizado numa proxima etapa do projeto.

@@ -1,0 +1,135 @@
+IOT (INPUT / OUTPUT / TASKS)
+Projeto: Recomendador de Imóveis por Custo-Benefício, Arapongas-PR
+Curso Superior Tecnólogo em Ciência de Dados, UNINTER
+Formato IOT mapeado ao CRISP-DM por baixo do capô.
+
+
+1. CONTEXTO E OBJETIVO
+
+Arapongas-PR não tem um portal único que reúna os imóveis disponíveis para
+locação das várias imobiliárias da cidade. Um futuro inquilino precisa
+visitar site por site pra comparar preço, localização e infraestrutura do
+bairro. O objetivo do projeto é centralizar essa busca e ranquear os
+imóveis por custo-benefício, cruzando orçamento do usuário, distância até
+o local de trabalho e infraestrutura do bairro (saúde, educação,
+alimentação, lazer).
+
+Alinhamento com os Objetivos de Desenvolvimento Sustentável: ODS 10
+(Redução das Desigualdades) e ODS 11 (Cidades e Comunidades Sustentáveis).
+
+
+2. INPUT (dados)
+
+2.1 Imóveis para locação
+Fonte: web scraping de 9 imobiliárias de Arapongas, uma por extrator.
+Ricardo, Solara, Linham, Panorama, Franjovi, BNZ, Almeida Silva, Giuliano
+e Terra Santa. Detalhes técnicos de cada uma estão em docs/imobiliarias.txt.
+Campos coletados: tipo, bairro, endereço, valor de aluguel, condomínio,
+metragem, quartos, banheiros, vagas, descrição, url do anúncio.
+
+2.2 Infraestrutura do bairro
+Fonte: Google Places (busca de estabelecimentos) e fontes públicas.
+Quatro dimensões: saúde (UBS, hospitais, clínicas, laboratórios),
+educação (escolas, CMEIs, faculdades), alimentação (mercados,
+mercearias, conveniências) e lazer (praças, parques, clubes, academias,
+cinema).
+
+2.3 Cadastro de imobiliárias
+Nome, site, endereço, telefone, status de permissão de scraping conforme
+robots.txt de cada site.
+
+2.4 Geolocalização dos bairros
+Coordenadas de latitude e longitude de cada bairro de Arapongas, usadas
+para calcular distância entre imóvel e local de trabalho.
+
+2.5 Dados informados pelo usuário, dentro do app
+Renda familiar ou pessoal bruta, bairro onde trabalha, pesos de
+importância (1 a 5) para preço, saúde, educação, lazer e alimentação.
+
+
+3. OUTPUT (o que entregamos e como funciona)
+
+Aplicativo Streamlit em 3 etapas.
+
+Etapa 1: o usuário informa a renda bruta e o bairro onde trabalha. O app
+calcula o teto de aluguel seguro (30% da renda) e já avisa, nesse ponto,
+se nenhum imóvel do banco cabe nesse orçamento, sem deixar o usuário
+avançar à toa.
+
+Etapa 2: o usuário calibra o peso de cada critério (economia, saúde,
+educação, lazer, alimentação) numa escala de 1 a 5. A proximidade do
+trabalho tem peso fixo, por ser o próprio objetivo central do app.
+
+Etapa 3: o app aplica o filtro eliminatório (regra dos 30%), calcula um
+score de custo-benefício ponderado para cada imóvel elegível e mostra os
+10 melhores, com bairro, valor, distância do trabalho, infraestrutura do
+bairro e descrição do anúncio, com link para o anúncio original.
+
+O usuário pode voltar e recalibrar os pesos sem perder a renda e o bairro
+já informados, ou começar uma consulta nova do zero.
+
+
+4. TASKS
+
+4.1 Business understanding
+Definir o problema (falta de portal único em Arapongas), o público
+(futuro inquilino) e o critério de sucesso (recomendação coerente com
+orçamento, localização e infraestrutura).
+
+4.2 Data understanding
+Levantamento das imobiliárias de Arapongas. Checagem de robots.txt de
+cada site. Identificação da plataforma técnica por trás de cada um
+(Next.js/Arbo, Code49, Webflow/Imonov, plataforma customizada, Angular
+SPA). Essa etapa revelou que boa parte dos bloqueios iniciais de
+robots.txt eram falsos negativos, causados por identificação genérica de
+user-agent, e não bloqueio real ao scraping.
+
+4.3 Data preparation
+Modelagem do banco (schema em estrela, com dim_bairro como tabela
+central e dim_saude, dim_educacao, dim_alimentacao, dim_lazer,
+dim_imobiliaria e dim_moradia ligadas a ela). Construção dos 9 extratores,
+um por imobiliária, com uma camada de sincronização incremental em comum
+(base.py), que insere imóveis novos, atualiza os existentes e marca como
+inativo quem sai do ar. Limpeza de dados: remoção de contaminação de
+imóveis só-venda que vazavam para dentro da base de locação, filtro para
+manter só tipos residenciais (casa, apartamento, sobrado, kitnet),
+fallback para extrair bairro do título do anúncio quando o bloco de
+endereço vem vazio, e filtro para garantir que o imóvel realmente fica em
+Arapongas (algumas imobiliárias atendem mais de uma cidade da região).
+Geocodificação dos bairros via Google Places, necessária para o cálculo
+de distância.
+
+4.4 Modeling
+Filtro eliminatório pela regra dos 30% (aluguel mais condomínio não pode
+passar de 30% da renda bruta informada). Score de custo-benefício como
+soma ponderada de 6 sub-notas normalizadas de 0 a 100: distância do
+trabalho (fórmula haversine, com corte em 12 km), preço (folga dentro do
+teto de 30%), saúde, educação, lazer e alimentação (contagem de
+estabelecimentos no bairro, normalizada por saturação). Pesos calibrados
+pelo próprio usuário na Etapa 2 do app, normalizados para somar 1.0.
+
+4.5 Evaluation
+Testes de sanidade nos dados após cada etapa de coleta (faixa de valores
+de aluguel plausível, ausência de tipos comerciais, ausência de imóveis
+fora de Arapongas). Testes automatizados de interface com a ferramenta
+AppTest do próprio Streamlit, simulando o fluxo completo de navegação
+entre as 3 etapas sem precisar de navegador, incluindo os botões de
+recalibrar e nova consulta.
+
+4.6 Deployment
+Interface Streamlit com identidade visual própria, inspirada em
+Arapongas ser conhecida como a Capital Nacional do Móvel. Documentação
+do projeto (README.md, docs/imobiliarias.txt, este IOT) e organização do
+repositório para publicação no GitHub.
+
+
+5. LIMITAÇÕES CONHECIDAS E PRÓXIMOS PASSOS
+
+3 imobiliárias (Bertoni, Shamar, Vale Verde) carregam os dados via
+JavaScript no navegador, sem API pública localizada, o que exigiria
+automação de navegador (Selenium ou Playwright) para serem incluídas.
+A distância calculada é por centróide de bairro, não por endereço exato
+do imóvel, o que é uma simplificação aceita para esta versão. Como
+próximo passo natural, valeria avaliar geocodificação do endereço
+completo de cada imóvel, e a inclusão das 3 imobiliárias restantes via
+navegador automatizado.
